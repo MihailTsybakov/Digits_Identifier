@@ -13,7 +13,7 @@
 #include "digit_container.h"
 #include "layer.h"
 
-class perceptron
+class perceptron // kinda useless but let it be
 {
 private:
     double val;
