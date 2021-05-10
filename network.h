@@ -8,12 +8,15 @@
 #include <sstream>
 #include <fstream>
 #include <iostream>
+#include <thread>
+#include <mutex>
+
 #include "aux_funcs.h"
 #include "matrix.h"
 #include "digit_container.h"
 #include "layer.h"
 
-class perceptron // kinda useless but let it be
+class perceptron
 {
 private:
     double val;
@@ -36,7 +39,7 @@ private:
 
     void SGD_step(std::vector<double> true_ans,  // Stohastic Gradiend Descent learning step
          std::vector<double> perception_input,
-         double learning_rate, int batch_size);
+         double learning_rate, int batch_size, double L2_lambda, std::mutex& mtx);
 
     std::function<double(double)> activation = sigmoid;
     std::function<double(double)> d_activation = d_sigmoid;
@@ -53,7 +56,11 @@ public:
     
     void SGD_learn(std::vector<digit_container> training_samples, std::vector<int> true_answers, double learning_rate,
          int epoch_count, int batch_size, bool epoch_logs, bool dynamic_gamma, double gamma_factor, int update_frequency,
-         std::vector<digit_container> test_batch, std::vector<int> test_answers);
+         std::vector<digit_container> test_batch, std::vector<int> test_answers, double L2_lambda, std::mutex& mtx);
+
+    void SGD_parallel_learn(std::vector<digit_container> training_samples, std::vector<int> true_answers, double learning_rate,
+         int epoch_count, int batch_size, bool epoch_logs, bool dynamic_gamma, double gamma_factor, int update_frequency,
+         std::vector<digit_container> test_batch, std::vector<int> test_answers, double L2_lambda, int thread_number);
 };
 
 #endif // DIDENT
