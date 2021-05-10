@@ -1,9 +1,5 @@
 #include "network.h"
 
-///* ========================================================================================================== */
-///* ========================================================================================================== */
-///* ========================================================================================================== */
-
 network::network(int perception_neurons, std::vector<int> hidden_layers, int output_neurons)
 {
     // hidden_layers.size() = number of hidden layers, each vector element = size of hidden layer
@@ -119,7 +115,7 @@ double network::batch_test(std::vector<digit_container> batch, std::vector<int> 
 
 void network::SGD_learn(std::vector<digit_container> trainig_samples, std::vector<int> true_answers, double learning_rate,
      int epoch_count, int batch_size, bool epoch_logs, bool dynamic_gamma, double gamma_factor, int update_frequency,
-     std::vector<digit_container> test_batch, std::vector<int> test_answers)
+     std::vector<digit_container> test_batch, std::vector<int> test_answers, double L2_lambda, std::mutex& mtx)
 {
     if (true_answers.size() != trainig_samples.size())
     {
@@ -134,9 +130,10 @@ void network::SGD_learn(std::vector<digit_container> trainig_samples, std::vecto
         // Logging
         if (epoch_logs == true)
         {
-            std::cout << "<logs> Before epoch " << epoch_num + 1 << ": accuracy is " << batch_test(test_batch, test_answers) << std::endl;
-            std::cout << "<logs> Learning epoch " << epoch_num + 1 << " started." << std::endl;
-            std::cout << "<logs> Learning rate during current epoch: " << learning_rate << std::endl;
+            mtx.lock();
+            std::cout << "<logs> Thread " << std::this_thread::get_id() << ": epoch " << epoch_num << " started. " << std::endl;
+            std::cout << "<logs> Thread " << std::this_thread::get_id() << ": accuracy at epoch start: " << batch_test(test_batch, test_answers) << std::endl;
+            mtx.unlock();
         }
         // Updating learning rate
         if (dynamic_gamma == true && gamma_upd >= update_frequency)
@@ -153,7 +150,7 @@ void network::SGD_learn(std::vector<digit_container> trainig_samples, std::vecto
                 digit_container train_dc = trainig_samples[index];
                 std::vector<double> sgd_vect = sgd_vector(true_answers[index]);
                 std::vector<double> sgd_perc = form_perception(train_dc);
-                SGD_step(sgd_vect, sgd_perc, learning_rate, batch_size);
+                SGD_step(sgd_vect, sgd_perc, learning_rate, batch_size, L2_lambda/trainig_samples.size(), mtx);
             }
         }
     }
@@ -161,7 +158,7 @@ void network::SGD_learn(std::vector<digit_container> trainig_samples, std::vecto
 
 void network::SGD_step(std::vector<double> true_ans,  // Stohastic Gradiend Descent learning step
     std::vector<double> perception_input,
-    double learning_rate, int batch_size)
+    double learning_rate, int batch_size, double L2_lambda, std::mutex& mtx)
 {
     std::vector<std::vector<double>> layer_activations;     // al
     std::vector<std::vector<double>> layer_weighted_sums;   // zl
@@ -186,7 +183,9 @@ void network::SGD_step(std::vector<double> true_ans,  // Stohastic Gradiend Desc
     for (size_t i = 0; i < layers.size(); ++i)
     {
         // Bias update:
-        for (size_t j = 0; j < layers[i].bias.size(); ++j) layers[i].bias[j] -= learning_rate * layer_deltas[i][j] / batch_size;
+        mtx.lock();
+        for (size_t j = 0; j < layers[i].bias.size(); ++j) layers[i].bias[j] -= (learning_rate/batch_size) * layer_deltas[i][j];
+        mtx.unlock();
         // Weights update:
         std::vector<std::vector<double>> old_weights = layers[i].W.get_m();
         std::vector<double> activations;
@@ -198,13 +197,16 @@ void network::SGD_step(std::vector<double> true_ans,  // Stohastic Gradiend Desc
         {
             activations = layer_activations[i - 1];
         }
+        mtx.lock();
         for (int p_ = 0; p_ < layers[i].W.dim().first; ++p_)
         {
             for (int q_ = 0; q_ < layers[i].W.dim().second; ++q_)
-            {
-                layers[i].W.set(p_, q_, old_weights[p_][q_] - learning_rate * activations[q_] * layer_deltas[i][p_]/batch_size);
+            {    
+                layers[i].W.set(p_, q_, old_weights[p_][q_]*(1 - learning_rate*L2_lambda) - 
+                    (learning_rate/batch_size)*activations[q_]*layer_deltas[i][p_]);
             }
         }
+        mtx.unlock();
     }
 }
 
@@ -214,4 +216,35 @@ std::vector<double> network::sgd_vector(int digit)
     for (int i = 0; i < 10; ++i) res[i] = 0.0;
     res[digit] = 1.0;
     return res;
+}
+
+void network::SGD_parallel_learn(std::vector<digit_container> training_samples, std::vector<int> true_answers, double learning_rate,
+     int epoch_count, int batch_size, bool epoch_logs, bool dynamic_gamma, double gamma_factor, int update_frequency,
+     std::vector<digit_container> test_batch, std::vector<int> test_answers, double L2_lambda, int thread_number)
+{
+    std::vector<std::thread> thread_pool;
+    std::mutex upd_mutex;
+    if (epoch_count % thread_number != 0)
+    {
+        std::cout << "Error: epoch count must be completely divided by thread number." << std::endl;
+        exit(-1);
+    }
+    if (epoch_logs == true)
+    {
+        std::cout << "<logs> Invoking thread pool." << std::endl;
+    }
+    for (int i = 0; i < thread_number; ++i)
+    {
+        thread_pool.push_back(std::thread(&network::SGD_learn, this, training_samples, true_answers, learning_rate,
+            epoch_count/thread_number, batch_size, epoch_logs, dynamic_gamma, gamma_factor, update_frequency, test_batch,
+            test_answers, L2_lambda, std::ref(upd_mutex)));
+    }
+    for (auto th = thread_pool.begin(); th != thread_pool.end(); ++th)
+    {
+        th->join();
+    }
+    if (epoch_logs == true)
+    {
+        std::cout << "<logs> Thread pool joined." << std::endl;
+    }
 }
