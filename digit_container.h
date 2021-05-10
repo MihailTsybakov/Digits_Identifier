@@ -111,6 +111,7 @@ public:
     }
     void set(int x, int y, uint8_t val)
     {
+        (val > 120) ? val = 255 : val = 0;
         pixels[y][x] = val;
         digit_img.put_pixel(x, y, 255-val, 255-val, 255-val);
     }
@@ -125,4 +126,4 @@ public:
 };
 
 
-#endif // DREADER
+#endif // DCONT
