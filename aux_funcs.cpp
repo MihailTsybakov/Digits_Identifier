@@ -1,104 +1,95 @@
 #include "aux_funcs.h"
 
-double random_number(double mean, double standard_deviation)
+double random_number(double mean, double sigma)
 {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::normal_distribution<double> nd(mean, standard_deviation); ///* Median & Standard Deviation */
-    return nd(gen);
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::normal_distribution<double> norm_distr(mean, sigma);
+	return norm_distr(gen);
 }
 
-double MSE(std::vector<double> y_true, std::vector<double> y_pred) // Absolute squared error
+double scalar_product(std::vector<double> v1, std::vector<double> v2)
 {
-    double R = 0;
-    for (size_t i = 0; i < y_true.size(); ++i) R += pow((y_true[i] - y_pred[i]), 2);
-    return R / static_cast<double>(y_true.size());
-}
-
-double accuracy(std::vector<int> y_true, std::vector<int> y_pred)
-{
-    int correct = 0;
-    for (size_t i = 0; i < y_true.size(); ++i)
-    {
-        if (y_true[i] == y_pred[i]) correct++;
-    }
-    return static_cast<double>(correct) / static_cast<double>(y_true.size());
-}
-
-double scalmul(std::vector<double> v1, std::vector<double> v2) // Scalar Multiplication
-{
-    if (v1.size() != v2.size())
-    {
-        std::cout << "Error: wrong vectors size." << std::endl;
-        exit(-1);
-    }
-    double r = 0;
-    for (size_t i = 0; i < v1.size(); ++i) r += v1[i] * v2[i];
-    return r;
-}
-
-std::vector<double> random_vector(int size)
-{
-    std::vector<double> res; res.resize(size);
-    for (int i = 0; i < size; ++i) res[i] = random_number(0, 1);
-    return res;
+	if (v1.size() != v2.size()) std::cout << "Error: dimension mismatch in scalar prod." << std::endl, exit(-1);
+	double sum = 0;
+	for (size_t i = 0; i < v1.size(); ++i) sum += v1[i] * v2[i];
+	return sum;
 }
 
 std::vector<double> hadamard_product(std::vector<double> v1, std::vector<double> v2)
 {
-    if (v1.size() != v2.size())
-    {
-        std::cout << "Error: wrong dimensions in Hadamard product." << std::endl;
-        exit(-1);
-    }
-    std::vector<double> res; res.resize(v1.size());
-    for (size_t i = 0; i < v1.size(); ++i) res[i] = v1[i] * v2[i];
-    return res;
+	if (v1.size() != v2.size()) std::cout << "Error: dimension mismatch in hadamard prod." << std::endl, exit(-1);
+	std::vector<double> h_prod; h_prod.resize(v1.size());
+	for (size_t i = 0; i < v1.size(); ++i) h_prod[i] = v1[i] * v2[i];
+	return h_prod;
+}
+
+std::vector<double> random_vector(double mean, double sigma, int size)
+{
+	std::vector<double> r_vect; r_vect.resize(size);
+	for (int i = 0; i < size; ++i) r_vect[i] = random_number(mean, sigma);
+	return r_vect;
+}
+
+std::vector<double> apply(std::vector<double> v, std::function<double(double)> f)
+{
+	std::vector<double> res;
+	for (auto val : v) res.push_back(f(val));
+	return res;
+}
+
+std::vector<double> form_perception(digit_container dc)
+{
+	std::vector<double> perc;
+	int h = dc.dim().first;
+	int w = dc.dim().second;
+	perc.resize(h * w);
+	for (int i = 0; i < h; ++i)
+	{
+		for (int j = 0; j < w; ++j)
+		{
+			perc[i * w + j] = dc.get(j, i);
+		}
+	}
+	return perc;
+}
+
+void print_v(std::vector<double> v)
+{
+	std::cout << "[";
+	for (auto el : v) std::cout << el << " ";
+	std::cout << "]" << std::endl;
 }
 
 std::vector<double> operator+(std::vector<double> v1, std::vector<double> v2)
 {
-    if (v1.size() != v2.size())
-    {
-        std::cout << "Error: wrong dimensions for operator+." << std::endl;
-        exit(-1);
-    }
-    std::vector<double> res; res.resize(v1.size());
-    for (size_t i = 0; i < v1.size(); ++i) res[i] = v1[i] + v2[i];
-    return res;
+	if (v1.size() != v2.size()) std::cout << "Error: dimension mismatch in operator+." << std::endl, exit(-1);
+	std::vector<double> sum_v; sum_v.resize(v1.size());
+	for (size_t i = 0; i < v1.size(); ++i) sum_v[i] = v1[i] + v2[i];
+	return sum_v;
 }
 
 std::vector<double> operator-(std::vector<double> v1, std::vector<double> v2)
 {
-    if (v1.size() != v2.size())
-    {
-        std::cout << "Error: wrong dimensions for operator-." << std::endl;
-        exit(-1);
-    }
-    std::vector<double> res; res.resize(v1.size());
-    for (size_t i = 0; i < v1.size(); ++i) res[i] = v1[i] - v2[i];
-    return res;
+	if (v1.size() != v2.size()) std::cout << "Error: dimension mismatch in operator-." << std::endl, exit(-1);
+	std::vector<double> sum_v; sum_v.resize(v1.size());
+	for (size_t i = 0; i < v1.size(); ++i) sum_v[i] = v1[i] - v2[i];
+	return sum_v;
 }
 
-
-/* ======================================================================= */
-/* ======================================================================= */
-
-std::vector<double> apply_f(std::vector<double> v, std::function<double(double)> func) // Applies function to a vector
+std::vector<double> operator*(double m, std::vector<double> v)
 {
-    std::vector<double> res; res.resize(v.size());
-    for (size_t i = 0; i < v.size(); ++i) res[i] = func(v[i]);
-    return res;
+	std::vector<double> mult_v; mult_v.resize(v.size());
+	for (size_t i = 0; i < v.size(); ++i) mult_v[i] = v[i]*m;
+	return mult_v;
 }
 
-///*  ============= Activations ============ */
-
-double sigmoid(double x)
+double sigmoid(double val)
 {
-    return 1 / (1 + exp(-x));
+	return (1 / (1 + exp(-val)));
 }
 
-double d_sigmoid(double x) // Sigmoid derivative
+double d_sigmoid(double val)
 {
-    return exp(-x) / pow((1 + exp(-x)), 2);
+	return sigmoid(val) * (1 - sigmoid(val));
 }
