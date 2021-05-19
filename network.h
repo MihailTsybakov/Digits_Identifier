@@ -1,66 +1,75 @@
-#ifndef DIDENT
-#define DIDENT
+#ifndef NETWORK
+#define NETWORK
 
-#include <vector>
-#include <cmath>
-#include <string>
-#include <ctime>
 #include <sstream>
-#include <fstream>
-#include <iostream>
 #include <thread>
 #include <mutex>
+#include <ctime>
 
-#include "aux_funcs.h"
-#include "matrix.h"
-#include "digit_container.h"
 #include "layer.h"
+#include "digit_container.h"
 
-class perceptron
+typedef struct
 {
-private:
-    double val;
 public:
-    perceptron() { this->val = 0.0; }
-    void setval(double val) { this->val = val; }
-    double getval() { return val; }
-};
+	int thread_number;
+	int epoch_count;
+	int batch_size;
+	int update_frequency;
+	double learning_rate;
+	double mult_factor;
+	double L2_lambda;
+	bool epoch_logs;
+	bool dynamic_LR;
+	std::vector<digit_container> train_images;
+	std::vector<digit_container> test_images;
+	std::vector<int> train_answers;
+	std::vector<int> test_answers;
+	std::mutex* mtx;
+
+}   learn_instructor;
+
+typedef struct
+{
+public:
+	int batch_size;
+	double learning_rate;
+	double L2_lambda;
+	std::vector<double> true_ans;
+	std::vector<double> perception;
+	std::mutex* mtx;
+	
+}	sgd_instructor;
+
+typedef struct
+{
+public:
+	std::function<double(double)> activation;
+	std::function<double(double)> d_activation;
+	int perception_neurons;
+	int output_neurons;
+	std::vector<int> hidden_layers;
+
+}   create_instructor;
 
 class network
 {
 private:
-    std::vector<network_layer> layers;
-    std::vector<perceptron> input_layer;
+	std::vector<layer> layers;
+	std::function<double(double)> activation;
+	std::function<double(double)> d_activation;
 
-    std::pair<std::vector<double>, std::vector<double>> feedforward_step(int l, std::vector<double> previous_activations);
-    std::vector<double> backpropagation_step(int l, std::vector<double> weighted_sum, std::vector<double> next_delta);
-    std::vector<double> lastlayer_delta(std::vector<double> true_ans, std::vector<double> activations,
-                        std::vector<double> weighted_sum);
-
-    void SGD_step(std::vector<double> true_ans,  // Stohastic Gradiend Descent learning step
-         std::vector<double> perception_input,
-         double learning_rate, int batch_size, double L2_lambda, std::mutex& mtx);
-
-    std::function<double(double)> activation = sigmoid;
-    std::function<double(double)> d_activation = d_sigmoid;
-    std::vector<double> sgd_vector(int digit);
+	std::vector<double> feedforward(std::vector<double> perception);
+	void sgd_step(sgd_instructor si);
 public:
-    network(int perception_neurons, std::vector<int> hidden_layers, int output_neurons);
-    void store(std::string path, std::string filename_template) const;
-    void load(std::string path, std::string filename_template, int layer_num);
-
-    std::vector<double> form_perception(digit_container DC);
-    std::vector<double> raw_identify(digit_container DC); // Returns Probability vector
-    int identify(digit_container DC); // Returns identified digit
-    double batch_test(std::vector<digit_container> batch, std::vector<int> true_answers);
-    
-    void SGD_learn(std::vector<digit_container> training_samples, std::vector<int> true_answers, double learning_rate,
-         int epoch_count, int batch_size, bool epoch_logs, bool dynamic_gamma, double gamma_factor, int update_frequency,
-         std::vector<digit_container> test_batch, std::vector<int> test_answers, double L2_lambda, std::mutex& mtx);
-
-    void SGD_parallel_learn(std::vector<digit_container> training_samples, std::vector<int> true_answers, double learning_rate,
-         int epoch_count, int batch_size, bool epoch_logs, bool dynamic_gamma, double gamma_factor, int update_frequency,
-         std::vector<digit_container> test_batch, std::vector<int> test_answers, double L2_lambda, int thread_number);
+	network(create_instructor ci);
+	void store(std::string network_name) const;
+	void load(std::string network_name, int layer_count);
+	void sgd_learn(learn_instructor li);
+	void sgd_parallel_learn(learn_instructor li);
+	double batch_test(std::vector<digit_container> imgs, std::vector<int> labels);
+	int identify(digit_container dc);
 };
 
-#endif // DIDENT
+
+#endif//NETWORK
