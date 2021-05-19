@@ -1,27 +1,26 @@
 #ifndef LAYER
 #define LAYER
 
+#include <fstream>
+#include <string>
+
 #include "matrix.h"
-#include "aux_funcs.h"
-//#include "network.h"
 
 class network;
-
-class network_layer
+class layer
 {
 private:
-	matrix W;
+	size_t layer_size;
+	size_t prev_size;
 	std::vector<double> bias;
+	matrix W;
 public:
-	network_layer(int dim_h, int dim_w);
-	void store_layer(std::string filename) const;
-	void load_layer(std::string filename);
-
-
-
-	size_t dim() const noexcept;
+	layer(){}
+	layer(size_t layer_size, size_t prev_size);
+	void save(std::string filename) const;
+	void load(std::string filename);
 	friend class network;
-
 };
 
-#endif //LAYER
+#endif//LAYER
+
