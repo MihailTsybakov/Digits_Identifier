@@ -1,62 +1,44 @@
-#include <iostream>
-#include <random>
-#include "digit_container.h"
+#include "mnist_reader.h"
 #include "network.h"
-#include "MNIST_decoder.h"
 
-
-int main(int argc, char* argv[])
+int main()
 {
-    // Initializaing neural net
-    std::vector<int> hidden_layer_params = { 100 };
-    network N(28 * 28, hidden_layer_params, 10);
+	create_instructor ci;
+	ci.activation = sigmoid;
+	ci.d_activation = d_sigmoid;
+	ci.perception_neurons = 28 * 28;
+	ci.hidden_layers = { 150 };
+	ci.output_neurons = 10;
 
-    // Getting training & testing data
-    std::vector<digit_container> train_images = MNIST_images("C:\\Users\\mihai\\Desktop\\progy\\C & C++\\Digits_Identifier\\Data",
-        "train-images.idx3-ubyte", 60'000);
-    std::vector<int> train_labels = MNIST_labels("C:\\Users\\mihai\\Desktop\\progy\\C & C++\\Digits_Identifier\\Data",
-        "train_labels.txt", 60'000);
-    std::vector<digit_container> test_images = MNIST_images("C:\\Users\\mihai\\Desktop\\progy\\C & C++\\Digits_Identifier\\Data",
-        "t10k-images.idx3-ubyte", 1000);
-    std::vector<int> test_labels = MNIST_labels("C:\\Users\\mihai\\Desktop\\progy\\C & C++\\Digits_Identifier\\Data",
-        "test_labels.txt", 1000);
+	mnist_reader mr_train("C:\\Users\\mihai\\Desktop\\progy\\C & C++\\Digits_Identifier\\Data", "train_labels.txt", "train-images.idx3-ubyte");
+	mnist_reader mr_test("C:\\Users\\mihai\\Desktop\\progy\\C & C++\\Digits_Identifier\\Data", "test_labels.txt", "t10k-images.idx3-ubyte");
 
-    //// Trainig neural network
-    //N.SGD_learn(train_images, train_labels, 3, 24, 10, true, true, 0.8, 4, test_images, test_labels);
+	std::vector<digit_container> train_imgs, test_imgs;
+	std::vector<int> train_labels, test_labels;
 
-    //// Saving weights
-    //N.store("C:\\Users\\mihai\\Desktop\\progy\\Additional\\Neural_Networks_Dump\\Digits_Identifier", "Net_Dump_Big");
+	train_imgs = mr_train.read_images(60'000);
+	train_labels = mr_train.read_labels(60'000);
+	test_imgs = mr_test.read_images(1'000);
+	test_labels = mr_test.read_labels(1'000);
+	
+	network N(ci);
 
-    N.load("C:\\Users\\mihai\\Desktop\\progy\\Additional\\Neural_Networks_Dump\\Digits_Identifier",
-        "0_957", 2);
-    
+	learn_instructor li;
+	/* ======================================================================================= */
+	li.batch_size = 10;        li.L2_lambda = 0.0;               li.train_answers = train_labels;
+	li.dynamic_LR = true;      li.mult_factor = 0.85;            li.test_images = test_imgs;
+	li.epoch_count = 20;       li.update_frequency = 5;          li.test_answers = test_labels;
+	li.epoch_logs = true;	   li.train_images = train_imgs;     li.learning_rate = 3.0;
+	li.thread_number = 4;
+	/* ======================================================================================= */
 
+	N.sgd_parallel_learn(li);
+	std::cout << "Learning done." << std::endl;
+	N.store("C:\\Users\\mihai\\Desktop\\progy\\Additional\\Neural_Networks_Dump\\Digits_Identifier\\Network_1");
 
-    // Precision test
-    std::vector<int> network_predictions;
-    for (size_t i = 0; i < test_labels.size(); ++i)
-    {
-        network_predictions.push_back(N.identify(test_images[i]));
-    }
-    int correct_answers = 0;
-    for (size_t i = 0; i < test_labels.size(); ++i)
-    {
-        if (network_predictions[i] == test_labels[i])
-        {
-            correct_answers++;
-        }
-    }
-    std::cout << "Accuracy: " << static_cast<double>(correct_answers) / test_labels.size() << std::endl;
+	//N.load("C:\\Users\\mihai\\Desktop\\progy\\Additional\\Neural_Networks_Dump\\Digits_Identifier\\Network_1", 2);
 
-    std::cout << "****************" << std::endl;
+	std::cout << "Accuracy: " << N.batch_test(test_imgs, test_labels) << std::endl;
 
-    for (int i = 0; i < 20; ++i)
-    {
-        std::stringstream ss;
-        ss << "Test_" << i + 1 << ".bmp";
-        test_images[i].save(ss.str());
-        std::cout << "Sample " << i << ": predict = " << N.identify(test_images[i]) << " (" << test_labels[i] << ")" << std::endl;
-    }
-
-    return 0;
+	return 0;
 }
