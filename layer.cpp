@@ -1,63 +1,42 @@
 #include "layer.h"
 
-size_t network_layer::dim() const noexcept
+layer::layer(size_t layer_size, size_t prev_size)
 {
-    return W.dim().first;
+	this->layer_size = layer_size;
+	this->prev_size = prev_size;
+	W.resize(layer_size, prev_size);
+	W.random_fill(static_cast<double>(MEAN), static_cast<double>(SIGMA));
+	bias = random_vector(static_cast<double>(MEAN), static_cast<double>(SIGMA), layer_size);
 }
 
-network_layer::network_layer(int dim_h, int dim_w) // Random initialization
+void layer::save(std::string filename) const
 {
-    W.resize(dim_h, dim_w);
-    bias = random_vector(dim_h);
-    W.random_fill();
+	if (filename.find(".txt") == std::string::npos) std::cout << "Error: unsupported file format." << std::endl, exit(-1);
+	std::ofstream out_file; out_file.open(filename);
+	if (!out_file.is_open()) std::cout << "Error: cannot open " << filename << std::endl, exit(-1);
+	out_file << layer_size << " " << prev_size << std::endl;
+	for (size_t row = 0; row < layer_size; ++row)
+	{
+		for (size_t col = 0; col < prev_size; ++col) out_file << W.M[row][col] << " ";
+		out_file << bias[row] << std::endl;
+	}
+	out_file.close();
+	std::cout << "<logs> Layer stored." << std::endl;
 }
 
-void network_layer::store_layer(std::string filename) const // Saving layer's weights and biases
+void layer::load(std::string filename)
 {
-    std::ofstream output_file;
-    output_file.open(filename, std::ios::out);
-    if (!output_file.is_open())
-    {
-        std::cout << "Error: cannot create " << filename << std::endl;
-        exit(-1);
-    }
-    output_file << W.dim().first << " " << W.dim().second << std::endl; // Writing layer shape
-    std::vector<std::vector<double>> W_ = W.get_m();
-    for (size_t i = 0; i < W.dim().first; ++i)
-    {
-        for (size_t j = 0; j < W.dim().second; ++j)
-        {
-            output_file << W_[i][j] << " ";
-        }
-        output_file << bias[i] << std::endl;
-    }
-    std::cout << "<logs> Layer " << filename << " stored." << std::endl;
-    output_file.close();
-}
-
-void network_layer::load_layer(std::string filename) // Loading layer's weights and biases
-{
-    std::ifstream input_file;
-    input_file.open(filename, std::ios::in);
-    if (!input_file.is_open())
-    {
-        std::cout << "Error: cannot open " << filename << std::endl;
-        exit(-1);
-    }
-    int layer_dim; input_file >> layer_dim;
-    int prev_dim; input_file >> prev_dim;
-    W.resize(layer_dim, prev_dim);
-    bias.resize(layer_dim);
-    for (int i = 0; i < layer_dim; ++i)
-    {
-        for (int j = 0; j < prev_dim; ++j)
-        {
-            double tmp;
-            input_file >> tmp;
-            W.set(i, j, tmp);
-        }
-        input_file >> bias[i];
-    }
-    std::cout << "<logs> Layer " << filename << " loaded." << std::endl;
-    input_file.close();
+	if (filename.find(".txt") == std::string::npos) std::cout << "Error: unsupported file format." << std::endl, exit(-1);
+	std::ifstream in_file; in_file.open(filename);
+	if (!in_file.is_open()) std::cout << "Error: cannot open " << filename << std::endl, exit(-1);
+	size_t l_size, p_size;
+	in_file >> l_size; in_file >> p_size;
+	W.resize(l_size, p_size);
+	for (size_t row = 0; row < l_size; ++row)
+	{
+		for (size_t col = 0; col < p_size; ++col) in_file >> W.M[row][col];
+		in_file >> bias[row];
+	}
+	in_file.close();
+	std::cout << "<logs> Layer loaded." << std::endl;
 }
