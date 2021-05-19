@@ -2,37 +2,35 @@
 #define AUXF
 
 #include <vector>
-#include <cmath>
-#include <string>
-#include <ctime>
-#include <sstream>
-#include <fstream>
 #include <iostream>
 #include <random>
 #include <functional>
+#include <cmath>
 
-double random_number(double mean, double standard_deviation);
+#include "digit_container.h"
 
-double MSE(std::vector<double> y_true, std::vector<double> y_pred); // Absolute squared error
+#define MEAN 0
+#define SIGMA 1
 
-double accuracy(std::vector<int> y_true, std::vector<int> y_pred);
-
-double scalmul(std::vector<double> v1, std::vector<double> v2); // Scalar Multiplication
-
-std::vector<double> random_vector(int size);
+double scalar_product(std::vector<double> v1, std::vector<double> v2);
 
 std::vector<double> hadamard_product(std::vector<double> v1, std::vector<double> v2);
 
+double random_number(double mean, double sigma);
+
+std::vector<double> random_vector(double mean, double sigma, int size);
+
+std::vector<double> apply(std::vector<double> v, std::function<double(double)> f);
+
+std::vector<double> form_perception(digit_container dc);
+
+void print_v(std::vector<double> v);
+
 std::vector<double> operator+(std::vector<double> v1, std::vector<double> v2);
-
 std::vector<double> operator-(std::vector<double> v1, std::vector<double> v2);
+std::vector<double> operator*(double m, std::vector<double> v);
 
-std::vector<double> apply_f(std::vector<double> v, std::function<double(double)> func); // Applies function to a vector
+double sigmoid(double val);
+double d_sigmoid(double val);
 
-///*  ============= Activations ============ */
-
-double sigmoid(double x);
-
-double d_sigmoid(double x); // Sigmoid derivative
-
-#endif // AUXF
+#endif//AUXF
