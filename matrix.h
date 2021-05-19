@@ -2,34 +2,23 @@
 #define MATRIX
 
 #include <vector>
-#include <cmath>
-#include <string>
-#include <ctime>
-#include <sstream>
-#include <fstream>
 #include <iostream>
-#include <random>
+
 #include "aux_funcs.h"
 
 class matrix
 {
-private:
-    int dim_h, dim_w;
-    std::vector<std::vector<double>> M;
 public:
-    matrix() {}
-    matrix(int h, int w);
-    
-    void random_fill();
-    void resize(int h, int w);
-    void set(int i, int j, double val);
-    void set_m(std::vector<std::vector<double>> M);
-    std::vector<std::vector<double>> get_m() const;
-    std::vector<double> mv_mult(std::vector<double> v);
-    std::pair<int, int> dim() const;
-    matrix transpose() const;
-    void print() const;
-    
+	size_t row_dim, col_dim;
+	std::vector<std::vector<double>> M;
+
+	matrix();
+	matrix(size_t rows, size_t cols);
+	void random_fill(double mean, double sigma);
+	void resize(size_t new_rows, size_t new_cols);
+	void print() const;
+	matrix transpose() const;
+	std::vector<double> mult_by_v(std::vector<double> v) const;
 };
 
-#endif //MATRIX
+#endif//MATRIX
